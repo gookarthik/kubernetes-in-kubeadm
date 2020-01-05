@@ -1,0 +1,88 @@
+						Section 1: Kubeadm on AWS: Master and Slave nodes
+						==================================================
+Step 1:
+=======
+Login to AWS dashboard and  create an instance on AWS. For this tutorial, will be using t2.medium instance. Make sure that the security group allows ssh(22), port 80, 443, 8080 and 6443. 
+
+Step 2: ssh into the instance and install the base image using the following steps
+=======
+sudo apt-get update
+sudo apt-get install -y apt-transport-https
+sudo su
+wget https://packages.cloud.google.com/apt/doc/apt-key.gpg
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add
+cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
+> deb http://apt.kubernetes.io/ kubernetes-xenial main
+> EOF
+
+Step 3: Install Docker
+=======
+apt-get update
+apt-get install -y docker.io
+sudo systemctl enable docker
+
+
+Step 4: Install kubeadm, Kubelet, Kubectl and Kubernetes-cni
+=======
+apt-get install -y kubelet kubeadm kubectl kubernetes-cni
+
+
+Note: remember to create an AMI image at this point.
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+							Section 2: Creating the Kubernetes Master Node
+							===============================================
+sudo su							
+kubeadm init    // copy the join command
+exit
+kubectl get node
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl get node
+kubectl get pods --all-namespaces
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+							Section 3: Installing a CNI Network.
+							====================================
+sudo sysctl net.bridge.bridge-nf-call-iptables=1
+export kubever=$(kubectl version | base64 | tr -d '\n')
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$kubever"
+kubectl get nodes
+kubectl get pods --all-namespaces
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+							Section 4: Creating the Kubernetes Slave nodes
+							===============================================
+Its time to install the Kubernetes Slave nodes.
+Create an instance using the AMI that was created above. For test purposes, its OK to choose t2. micro image.
+
+sudo su
+Step 1: Join the first Node to the Cluster. ssh into the slave node
+Step 2: run the join command from kubeadm init screen output above
+
+
+(Step3, Step4 is In Master Node)
+Step 3: Check that the nodes are ready.
+kubectl get nodes
+Step 4: Check that the pods are all up. Note how kube-proxy and weave-net gets added with every new node.
+g
+
+Step 5: Join the second  node to the Cluster. ssh into the slave node.
+
+(Step6, Step7, is In Master Node)
+Step 6: Check that the second node has joined the cluster and ready.
+kubectl get nodes
+Step 7: Check that the pods are all up. Note how kube-proxy and weave-net gets added with every new node.
+kubectl get pods --all-namespaces
+
+kubectl run pod1 --image=nginx
+kubectl run pod2 --image=nginx
+kubectl get pods
